@@ -1,4 +1,4 @@
-package com.example.tickets_api;
+package com.example.tickets_api.service;
 
 
 import com.example.tickets_api.exceptions.TicketNotFoundException;
@@ -6,7 +6,6 @@ import com.example.tickets_api.model.Priority;
 import com.example.tickets_api.model.Status;
 import com.example.tickets_api.model.Ticket;
 import com.example.tickets_api.repository.TicketRepository;
-import com.example.tickets_api.service.TicketService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
