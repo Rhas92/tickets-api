@@ -19,11 +19,11 @@ public class Ticket {
     private String id;
 
     /** Short summary of the issue. Must not be blank. */
-    @NotBlank
+
     private String title;
 
     /** Detailed explanation of the issue. Must not be blank. */
-    @NotBlank
+    
     private String description;
 
     /** Current lifecycle state of the ticket. */
