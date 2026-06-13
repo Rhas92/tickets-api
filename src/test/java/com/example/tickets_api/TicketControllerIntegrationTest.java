@@ -12,10 +12,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.example.tickets_api.service.JwtService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -32,9 +32,15 @@ class TicketControllerIntegrationTest {
     @Autowired
     private TicketRepository ticketRepository;
 
+    @Autowired
+    private JwtService jwtService;
+
+    private String token;
+
     @BeforeEach
-    void cleanUp() {
+    void setUp() {
         ticketRepository.deleteAll();
+        token = jwtService.generateToken("admin"); // "admin" is seeded by DataSeeder
     }
 
     @Test
@@ -49,6 +55,7 @@ class TicketControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/tickets")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())
@@ -68,6 +75,7 @@ class TicketControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/tickets")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest());
