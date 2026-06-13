@@ -1,50 +1,90 @@
-# Tickets API
+# 🎫 Tickets API
 
-A RESTful support-ticket management API built with Spring Boot and MongoDB.
-Tickets have a title, description, status and priority, and can be created,
-listed, filtered, updated and deleted.
+A RESTful **support-ticket management API** built with Java and Spring Boot, secured
+with JWT, fully tested, dockerized and **deployed in production**.
 
-## Technologies
+🌍 **Live demo:** https://tickets-api-xiew.onrender.com/swagger-ui/index.html
+*(Free tier — the first request may take ~30–60s while the app wakes up.)*
+ 
+---
 
-- Java 21
-- Spring Boot 4.0.6
-- Spring Data MongoDB
-- Bean Validation
-- Docker & Docker Compose
-- Swagger / OpenAPI (springdoc)
-- Testcontainers (integration tests)
-- GitHub Actions (CI)
+## ✨ Features
 
-## Features
+- 🎫 Full **CRUD** for support tickets
+- 🔎 Filtering by **status** and **priority**
+- 🔐 **JWT authentication** (stateless)
+- 📦 **DTOs** decoupling the API from the database model
+- ✅ Input **validation** with consistent JSON error responses
+- 🧱 **Layered architecture** (Controller → Service → Repository)
+- 🧪 **Three levels of tests**: unit, data integration, and web layer
+- 🚀 **CI/CD**: tested automatically on every push, auto-deployed on merge
+---
 
-- Full CRUD for tickets
-- Filtering by status and priority
-- Request/response DTOs (API contract decoupled from the database model)
-- Bean validation on input with consistent JSON error responses
-- Global exception handling (`@RestControllerAdvice`)
-- Layered architecture: Controller → Service → Repository
-- Three levels of tests: unit (Mockito), data integration (Testcontainers),
-  and web layer (MockMvc)
-- Continuous Integration: builds and tests run automatically on every push/PR
+## 🛠️ Tech Stack
 
-## Architecture
+| Area | Technology |
+|------|------------|
+| Language | Java 21 |
+| Framework | Spring Boot 4 |
+| Database | MongoDB (Spring Data MongoDB) |
+| Security | Spring Security + JWT (jjwt) |
+| Docs | Swagger / OpenAPI (springdoc) |
+| Testing | JUnit 5, Mockito, Testcontainers |
+| Build | Maven |
+| Containers | Docker + Docker Compose |
+| CI | GitHub Actions |
+| Hosting | Render + MongoDB Atlas |
+ 
+---
+
+## 🏗️ Architecture
 
 ```
-controller/   REST endpoints (HTTP)
-service/      business logic
-repository/    MongoDB data access
-model/        Ticket entity + Status/Priority enums
-dto/          TicketRequest (input) / TicketResponse (output)
-exceptions/   custom exceptions + global handler
+controller/   → REST endpoints (HTTP layer)
+service/      → business logic
+repository/   → MongoDB data access
+model/        → Ticket document + Status/Priority enums + AppUser
+dto/          → request/response objects
+config/       → security, JWT filter, OpenAPI
+exceptions/   → custom exceptions + global error handler
 ```
 
-## Getting Started
+> Following **SOLID** principles — single responsibility (DTOs vs entities) and
+> dependency inversion (services depend on repository interfaces).
+ 
+---
+
+## 🔐 Authentication
+
+This API is secured with JWT. Most endpoints require a valid token; only `/login`
+and the Swagger docs are public.
+
+**Demo user** (seeded automatically on startup):
+
+| username | password |
+|----------|----------|
+| `admin`  | `admin123` |
+
+**How to use it:**
+
+1. `POST /login` with your credentials → receive a **JWT**.
+```json
+   { "username": "admin", "password": "admin123" }
+```
+2. Send the token on every protected request:
+```
+   Authorization: Bearer <your-token>
+```
+In Swagger, click the **Authorize 🔒** button and paste the token.
+ 
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - Java 21+
 - Docker (Docker Desktop)
-
 ### Run with Docker Compose (recommended)
 
 Starts the app and a MongoDB container, already connected, with persistent storage:
@@ -55,49 +95,33 @@ docker compose up --build
 
 The API will be available at `http://localhost:8080`.
 
-### Run locally (without Docker Compose)
-
-Requires a MongoDB instance reachable at `mongodb://localhost:27017`:
-
-```bash
-docker run -d -p 27017:27017 --name mongodb mongo:8
-./mvnw spring-boot:run
-```
-
 ### Configuration
 
-The MongoDB connection is read from the `MONGODB_URI` environment variable,
-falling back to a local default (`application.yml`):
+The app reads its config from environment variables, with safe local defaults:
 
-```yaml
-spring:
-  mongodb:
-    uri: ${MONGODB_URI:mongodb://localhost:27017/ticketsdb}
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/ticketsdb` |
+| `JWT_SECRET` | Secret key used to sign tokens | a development placeholder |
 
-In Docker Compose, `MONGODB_URI` points to the `mongodb` service.
+> 🔒 In production these are set as environment variables and never committed.
+ 
+---
 
-## API Documentation
+## 📚 API Endpoints
 
-Interactive documentation (Swagger UI):
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/login` | Authenticate and receive a JWT | 🔓 Public |
+| `GET` | `/tickets` | Get all tickets | 🔐 |
+| `GET` | `/tickets/{id}` | Get a ticket by id | 🔐 |
+| `GET` | `/tickets/status/{status}` | Get tickets by status | 🔐 |
+| `GET` | `/tickets/priority/{priority}` | Get tickets by priority | 🔐 |
+| `POST` | `/tickets` | Create a ticket | 🔐 |
+| `PUT` | `/tickets/{id}` | Update a ticket | 🔐 |
+| `DELETE` | `/tickets/{id}` | Delete a ticket | 🔐 |
 
-```
-http://localhost:8080/swagger-ui.html
-```
-
-## Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/tickets` | Get all tickets |
-| GET | `/tickets/{id}` | Get a ticket by id |
-| GET | `/tickets/status/{status}` | Get tickets by status |
-| GET | `/tickets/priority/{priority}` | Get tickets by priority |
-| POST | `/tickets` | Create a ticket |
-| PUT | `/tickets/{id}` | Update a ticket |
-| DELETE | `/tickets/{id}` | Delete a ticket |
-
-### Request body (POST / PUT)
+### Ticket body (POST / PUT)
 
 ```json
 {
@@ -110,17 +134,28 @@ http://localhost:8080/swagger-ui.html
 
 - `status`: `OPEN`, `IN_PROGRESS`, `CLOSED`
 - `priority`: `LOW`, `MEDIUM`, `HIGH`
+---
 
-## Running the Tests
+## 🧪 Running the Tests
 
 ```bash
 ./mvnw clean verify
 ```
 
-Runs unit tests (mocked repository) and integration tests. The integration
-tests spin up a real MongoDB container automatically via Testcontainers, so
-Docker must be running.
+Runs all test levels:
 
-## License
+- 🧩 **Unit** — service logic with a mocked repository (Mockito)
+- 🗄️ **Data integration** — against a real MongoDB started by **Testcontainers**
+- 🌐 **Web layer** — real HTTP requests through the whole chain (MockMvc), with JWT
+> Docker must be running (Testcontainers starts a throwaway MongoDB container).
+ 
+---
+
+## 📦 Project Status
+
+✅ CRUD · ✅ MongoDB · ✅ DTOs · ✅ Validation & error handling · ✅ JWT security
+✅ Docker Compose · ✅ Tests (3 levels) · ✅ CI · ✅ Deployed in production
+
+## 📖 License
 
 This project is for educational/portfolio purposes.
