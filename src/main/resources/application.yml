@@ -3,5 +3,7 @@ server:
 
 spring:
   mongodb:
-    auto-index-creation: true
     uri: ${MONGODB_URI:mongodb://localhost:27017/ticketsdb}
+  data:
+    mongodb:
+      auto-index-creation: true
