@@ -11,21 +11,8 @@
 	<groupId>com.example</groupId>
 	<artifactId>tickets-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>tickets-api</name>
+	<description>REST API for managing support tickets, secured with JWT</description>
 	<properties>
 		<java.version>21</java.version>
 	</properties>
