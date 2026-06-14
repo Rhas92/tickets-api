@@ -7,8 +7,10 @@ import com.example.tickets_api.model.Status;
 import com.example.tickets_api.model.Ticket;
 import com.example.tickets_api.service.TicketService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -43,9 +45,11 @@ public class TicketController {
     }
 
     @PostMapping("/tickets")
-    public TicketResponse createTicket(@Valid @RequestBody TicketRequest request) {
-        Ticket ticket = toEntity(request);
-        return toResponse(ticketService.createTicket(ticket));
+    public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody TicketRequest request) {
+        Ticket created = ticketService.createTicket(toEntity(request));
+        TicketResponse body = toResponse(created);
+        URI location = URI.create("/tickets/" + created.getId());
+        return ResponseEntity.created(location).body(body);
     }
     @PutMapping("/tickets/{id}")
     public TicketResponse updateTicket(@Valid @RequestBody TicketRequest request, @PathVariable String id) {
@@ -53,8 +57,9 @@ public class TicketController {
         return toResponse(ticketService.updateTicket(ticket, id));
     }
     @DeleteMapping("/tickets/{id}")
-    public String deleteTicket(@PathVariable String id){
-        return ticketService.deleteTicket(id);
+    public ResponseEntity<Void> deleteTicket(@PathVariable String id) {
+        ticketService.deleteTicket(id);
+        return ResponseEntity.noContent().build();
     }
 
     private Ticket toEntity(TicketRequest request) {

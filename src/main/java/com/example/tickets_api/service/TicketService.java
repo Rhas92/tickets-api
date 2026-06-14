@@ -38,11 +38,16 @@ public class TicketService {
 
     public Ticket updateTicket(Ticket ticket, String id) {
         ticket.setId(id);
+        if (!ticketRepository.existsById(id)) {
+            throw new TicketNotFoundException(id);
+        }
         return ticketRepository.save(ticket);
     }
 
-    public String deleteTicket(String id) {
+    public void deleteTicket(String id) {
+        if (!ticketRepository.existsById(id)) {
+            throw new TicketNotFoundException(id);
+        }
         ticketRepository.deleteById(id);
-        return "Ticket " + id + " deleted";
     }
 }
