@@ -11,13 +11,15 @@ with JWT, fully tested, dockerized and **deployed in production**.
 ## ✨ Features
 
 - 🎫 Full **CRUD** for support tickets
-- 🔎 Filtering by **status** and **priority**
-- 🔐 **JWT authentication** (stateless)
+- 🔎 Filtering by **status** and **priority**, with **pagination** on listing
+- 🔐 **JWT authentication** (stateless) + **role-based authorization**
 - 📦 **DTOs** decoupling the API from the database model
-- ✅ Input **validation** with consistent JSON error responses
+- ✅ Input **validation** with consistent JSON error responses for every error path
 - 🧱 **Layered architecture** (Controller → Service → Repository)
 - 🧪 **Three levels of tests**: unit, data integration, and web layer
-- 🚀 **CI/CD**: tested automatically on every push, auto-deployed on merge
+- 🪵 **Logging** (SLF4J) on key operations
+- 🤖 **Continuous Integration**: build + tests run automatically on every push/PR;
+  the live app auto-deploys from `main`
 ---
 
 ## 🛠️ Tech Stack
@@ -54,22 +56,27 @@ exceptions/   → custom exceptions + global error handler
  
 ---
 
-## 🔐 Authentication
+## 🔐 Authentication & Authorization
 
 This API is secured with JWT. Most endpoints require a valid token; only `/login`
-and the Swagger docs are public.
+and the Swagger docs are public. Deleting a ticket additionally requires the
+**ADMIN** role.
 
 **Demo user** (seeded automatically on startup):
 
-| username | password |
-|----------|----------|
-| `admin`  | `admin123` |
+| username | password | role |
+|----------|----------|------|
+| `admin`  | `admin123` | ADMIN |
 
 **How to use it:**
 
-1. `POST /login` with your credentials → receive a **JWT**.
+1. `POST /login` with your credentials → receive a **JWT**:
 ```json
    { "username": "admin", "password": "admin123" }
+```
+Response:
+```json
+   { "token": "<your-jwt>" }
 ```
 2. Send the token on every protected request:
 ```
@@ -110,16 +117,16 @@ The app reads its config from environment variables, with safe local defaults:
 
 ## 📚 API Endpoints
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
 | `POST` | `/login` | Authenticate and receive a JWT | 🔓 Public |
-| `GET` | `/tickets` | Get all tickets | 🔐 |
-| `GET` | `/tickets/{id}` | Get a ticket by id | 🔐 |
-| `GET` | `/tickets/status/{status}` | Get tickets by status | 🔐 |
-| `GET` | `/tickets/priority/{priority}` | Get tickets by priority | 🔐 |
-| `POST` | `/tickets` | Create a ticket | 🔐 |
-| `PUT` | `/tickets/{id}` | Update a ticket | 🔐 |
-| `DELETE` | `/tickets/{id}` | Delete a ticket | 🔐 |
+| `GET` | `/tickets` | Get tickets (paginated: `?page=0&size=20`) | 🔐 Authenticated |
+| `GET` | `/tickets/{id}` | Get a ticket by id | 🔐 Authenticated |
+| `GET` | `/tickets/status/{status}` | Get tickets by status | 🔐 Authenticated |
+| `GET` | `/tickets/priority/{priority}` | Get tickets by priority | 🔐 Authenticated |
+| `POST` | `/tickets` | Create a ticket → `201 Created` | 🔐 Authenticated |
+| `PUT` | `/tickets/{id}` | Update a ticket | 🔐 Authenticated |
+| `DELETE` | `/tickets/{id}` | Delete a ticket → `204 No Content` | 🔐 ADMIN only |
 
 ### Ticket body (POST / PUT)
 
@@ -153,8 +160,8 @@ Runs all test levels:
 
 ## 📦 Project Status
 
-✅ CRUD · ✅ MongoDB · ✅ DTOs · ✅ Validation & error handling · ✅ JWT security
-✅ Docker Compose · ✅ Tests (3 levels) · ✅ CI · ✅ Deployed in production
+✅ CRUD · ✅ MongoDB · ✅ DTOs · ✅ Validation & error handling · ✅ JWT + roles
+✅ Pagination · ✅ Logging · ✅ Docker Compose · ✅ Tests (3 levels) · ✅ CI · ✅ Deployed
 
 ## 📖 License
 
