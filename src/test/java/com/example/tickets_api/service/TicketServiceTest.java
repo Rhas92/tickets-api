@@ -11,10 +11,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -34,12 +38,13 @@ public class TicketServiceTest {
                 new Ticket("Test #2", "This is the second test", Status.OPEN, Priority.HIGH)
         );
 
-        when(ticketRepository.findAll()).thenReturn(mockTickets);
+        when(ticketRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(mockTickets));
 
-        List<Ticket> result = ticketService.getTickets();
+        Page<Ticket> result = ticketService.getTickets(Pageable.unpaged());
 
-        assertEquals(2, result.size());
-        assertEquals("Test #1", result.getFirst().getTitle());
+        assertEquals(2, result.getTotalElements());
+        assertEquals("Test #1", result.getContent().getFirst().getTitle());
     }
 
     @Test

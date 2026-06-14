@@ -1,5 +1,6 @@
 package com.example.tickets_api.controller;
 
+import com.example.tickets_api.dto.AuthResponse;
 import com.example.tickets_api.dto.LoginRequest;
 import com.example.tickets_api.service.JwtService;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,10 +21,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@RequestBody LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password())
         );
-        return jwtService.generateToken(request.username());
+        return new AuthResponse(jwtService.generateToken(request.username()));
     }
 }
