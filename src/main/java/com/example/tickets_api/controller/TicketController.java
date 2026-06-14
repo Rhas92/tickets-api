@@ -7,8 +7,11 @@ import com.example.tickets_api.model.Status;
 import com.example.tickets_api.model.Ticket;
 import com.example.tickets_api.service.TicketService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 
 import java.net.URI;
 import java.util.List;
@@ -22,10 +25,8 @@ public class TicketController {
     }
 
     @GetMapping("/tickets")
-    public List<TicketResponse> getTickets() {
-        return ticketService.getTickets().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<TicketResponse> getTickets(Pageable pageable) {
+        return ticketService.getTickets(pageable).map(this::toResponse);
     }
     @GetMapping("/tickets/status/{status}")
     public List<TicketResponse> getTicketsByStatus(@PathVariable Status status) {
