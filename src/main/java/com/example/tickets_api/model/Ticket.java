@@ -1,6 +1,5 @@
 package com.example.tickets_api.model;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -18,11 +17,11 @@ public class Ticket {
     @Id
     private String id;
 
-    /** Short summary of the issue. Must not be blank. */
+    /** Short summary of the issue. */
 
     private String title;
 
-    /** Detailed explanation of the issue. Must not be blank. */
+    /** Detailed explanation of the issue. */
     
     private String description;
 

@@ -8,6 +8,15 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+/**
+ * Issues and validates JWTs used for stateless authentication. Tokens are signed
+ * with HS256 using a secret loaded from configuration.
+ * <p>
+ * Security note: the {@code JWT_SECRET} default below is a placeholder for local
+ * use only. Anyone who knows it can forge valid tokens, so production must supply
+ * its own secret via the environment. (Removing this fallback so a missing secret
+ * fails fast is tracked as a pending hardening task.)
+ */
 @Service
 public class JwtService {
 
@@ -15,10 +24,21 @@ public class JwtService {
     private static final long EXPIRATION_MS = 1000 * 60 * 60; // 1 hour
     private final SecretKey key;
 
+    /**
+     * Builds the signing key from the configured secret.
+     *
+     * @param secret the HMAC secret; must be at least 32 bytes for HS256
+     */
     public JwtService(@Value("${JWT_SECRET:my-super-secret-key-at-least-32-chars-long!!}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
-    // Generate the token (on login)
+
+    /**
+     * Mints a signed token for the given user, valid for one hour.
+     *
+     * @param username the subject the token represents
+     * @return the compact, signed JWT string
+     */
     public String generateToken(String username) {
         return Jwts.builder()
                 .subject(username)
@@ -28,7 +48,13 @@ public class JwtService {
                 .compact();
     }
 
-    // Validate the token and extract the username (on each request)
+    /**
+     * Verifies a token's signature and expiry and returns its subject.
+     *
+     * @param token the compact JWT string
+     * @return the username stored in the token's subject
+     * @throws io.jsonwebtoken.JwtException if the token is invalid, tampered or expired
+     */
     public String extractUsername(String token) {
         return Jwts.parser()
                 .verifyWith(key)
