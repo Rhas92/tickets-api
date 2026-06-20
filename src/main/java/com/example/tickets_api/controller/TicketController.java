@@ -16,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.List;
 
+/**
+ * REST endpoints for support tickets (the HTTP layer). Delegates all logic to
+ * {@link TicketService} and converts between the {@link Ticket} entity and the
+ * {@link TicketRequest}/{@link TicketResponse} DTOs so the API never exposes the
+ * persistence model directly.
+ */
 @RestController
 public class TicketController {
     private final TicketService ticketService;
@@ -24,20 +30,36 @@ public class TicketController {
         this.ticketService = ticketService;
     }
 
+    /**
+     * Lists tickets in a paginated form. Paging/sorting come from the request
+     * (e.g. {@code ?page=0&size=20&sort=priority}).
+     */
     @GetMapping("/tickets")
     public Page<TicketResponse> getTickets(Pageable pageable) {
         return ticketService.getTickets(pageable).map(this::toResponse);
     }
+
+    /**
+     * Returns all tickets in the given status. An unknown status value is
+     * rejected as 400 by the global handler (type-mismatch on the enum).
+     */
     @GetMapping("/tickets/status/{status}")
     public List<TicketResponse> getTicketsByStatus(@PathVariable Status status) {
         return ticketService.getTicketsByStatus(status).stream()
                 .map(this::toResponse)
                 .toList();
     }
+
+    /** Returns a single ticket, or 404 if no ticket has that id. */
     @GetMapping("/tickets/{id}")
     public TicketResponse getTicketById(@PathVariable String id) {
         return toResponse(ticketService.getTicketById(id));
     }
+
+    /**
+     * Returns all tickets with the given priority. An unknown priority value is
+     * rejected as 400 by the global handler.
+     */
     @GetMapping("/tickets/priority/{priority}")
     public List<TicketResponse> getTicketsByPriority(@PathVariable Priority priority) {
         return ticketService.getTicketsByPriority(priority).stream()
@@ -45,6 +67,10 @@ public class TicketController {
                 .toList();
     }
 
+    /**
+     * Creates a ticket from a validated payload and returns 201 with a
+     * {@code Location} header pointing at the new resource.
+     */
     @PostMapping("/tickets")
     public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody TicketRequest request) {
         Ticket created = ticketService.createTicket(toEntity(request));
@@ -52,17 +78,24 @@ public class TicketController {
         URI location = URI.create("/tickets/" + created.getId());
         return ResponseEntity.created(location).body(body);
     }
+
+    /**
+     * Replaces the ticket at the given id with the validated payload, or 404 if
+     * it does not exist.
+     */
     @PutMapping("/tickets/{id}")
     public TicketResponse updateTicket(@Valid @RequestBody TicketRequest request, @PathVariable String id) {
         Ticket ticket = toEntity(request);
         return toResponse(ticketService.updateTicket(ticket, id));
     }
+    /** Deletes the ticket and returns 204. Restricted to ADMIN by {@code SecurityConfig}. */
     @DeleteMapping("/tickets/{id}")
     public ResponseEntity<Void> deleteTicket(@PathVariable String id) {
         ticketService.deleteTicket(id);
         return ResponseEntity.noContent().build();
     }
 
+    /** Maps an inbound request DTO to a new entity (id is assigned on save). */
     private Ticket toEntity(TicketRequest request) {
         return new Ticket(
                 request.title(),
@@ -72,6 +105,7 @@ public class TicketController {
         );
     }
 
+    /** Maps an entity to the outbound response DTO returned to clients. */
     private TicketResponse toResponse(Ticket ticket) {
         return new TicketResponse(
                 ticket.getId(),

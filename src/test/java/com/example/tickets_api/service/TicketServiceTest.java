@@ -23,6 +23,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+/**
+ * Unit tests for {@link TicketService} in isolation: the repository is mocked
+ * (Mockito), so these run fast and exercise only the service's own logic — no
+ * Spring context and no database.
+ */
 @ExtendWith(MockitoExtension.class)
 public class TicketServiceTest {
     @Mock
@@ -31,6 +36,7 @@ public class TicketServiceTest {
     @InjectMocks
     private TicketService ticketService;
 
+    /** Returns whatever page the repository provides, mapped through unchanged. */
     @Test
     void shouldReturnAllTickets() {
         List<Ticket> mockTickets = List.of(
@@ -47,6 +53,7 @@ public class TicketServiceTest {
         assertEquals("Test #1", result.getContent().getFirst().getTitle());
     }
 
+    /** Returns the ticket when the repository finds it. */
     @Test
     void shouldGetTicketById() {
         Ticket mockTicket = new Ticket("Test #1", "This is the first test", Status.OPEN, Priority.HIGH);
@@ -56,6 +63,7 @@ public class TicketServiceTest {
         assertEquals("Test #1", result.getTitle());
     }
 
+    /** Throws {@link TicketNotFoundException} when the repository returns empty. */
     @Test
     void shouldThrowExceptionWhenTicketNotFound() {
         when(ticketRepository.findById("99")).thenReturn(Optional.empty());
