@@ -29,7 +29,7 @@ public class JwtService {
      *
      * @param secret the HMAC secret; must be at least 32 bytes for HS256
      */
-    public JwtService(@Value("${JWT_SECRET:my-super-secret-key-at-least-32-chars-long!!}") String secret) {
+    public JwtService(@Value("${JWT_SECRET}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
