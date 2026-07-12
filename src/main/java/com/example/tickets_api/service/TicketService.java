@@ -6,6 +6,11 @@ import com.example.tickets_api.model.Status;
 import com.example.tickets_api.model.Ticket;
 import com.example.tickets_api.repository.TicketRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
@@ -22,9 +27,11 @@ import java.util.List;
 public class TicketService {
     private static final Logger log = LoggerFactory.getLogger(TicketService.class);
     private final TicketRepository ticketRepository;
+    private final MongoTemplate mongoTemplate;
 
-    public TicketService(TicketRepository ticketRepository) {
+    public TicketService(TicketRepository ticketRepository, MongoTemplate mongoTemplate) {
         this.ticketRepository = ticketRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /** Returns one page of tickets according to the given paging/sorting. */
@@ -52,37 +59,72 @@ public class TicketService {
         return ticketRepository.findByPriority(priority);
     }
 
-    /** Persists a new ticket; MongoDB assigns its id on save. */
+    /**
+     * Persists a new ticket; MongoDB assigns its id on save.
+     *
+     * The title is sanitized before being logged, but stored verbatim.
+     * @param ticket the ticket to create
+     * @return the created ticket
+     * */
     public Ticket createTicket(Ticket ticket) {
-        log.info("Creating ticket with title '{}'", ticket.getTitle());
+        String safeTitle = sanitizeForLog(ticket.getTitle());
+        log.info("Creating ticket with title '{}'", safeTitle);
         return ticketRepository.save(ticket);
     }
 
     /**
-     * Replaces an existing ticket. The id from the path is forced onto the entity
-     * so the client cannot move the record by changing the body.
+     * Updates an existing ticket, locating and modifying the document in a single
+     * atomic operation. If no ticket with the given id exists, nothing is created.
+     * <p>
+     * The id is only used to locate the document, never to write it, so the client
+     * cannot move the record by changing the body. It is sanitized before being
+     * logged.
      *
+     * @param ticket the ticket to update
+     * @param id the ticket's id
+     * @return the updated ticket
      * @throws TicketNotFoundException if the ticket does not exist
      */
     public Ticket updateTicket(Ticket ticket, String id) {
-        ticket.setId(id);
-        if (!ticketRepository.existsById(id)) {
-            log.warn("Update failed - ticket {} not found", id);
+        String safeId = sanitizeForLog(id);
+        Query query = new Query(Criteria.where("_id").is(id));
+        Update update = new Update()
+                .set("title", ticket.getTitle())
+                .set("description", ticket.getDescription())
+                .set("status", ticket.getStatus())
+                .set("priority", ticket.getPriority());
+        FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
+        Ticket updated = mongoTemplate.findAndModify(query, update, options, Ticket.class);
+        if (updated == null) {
+            log.warn("Update failed - ticket {} not found", safeId);
             throw new TicketNotFoundException(id);
         }
-        return ticketRepository.save(ticket);
+        return updated;
     }
 
     /**
-     * Deletes a ticket by id.
+     * Deletes the ticket with the given id in a single atomic operation: the
+     * document is removed and the number of deleted documents tells us whether
+     * it existed at all. The id is sanitized before being logged.
      *
+     * @param id the ticket's id.
      * @throws TicketNotFoundException if the ticket does not exist
      */
     public void deleteTicket(String id) {
-        if (!ticketRepository.existsById(id)) {
+        String safeId = sanitizeForLog(id);
+        int deletedCount = ticketRepository.deleteTicketById(id);
+        if (deletedCount == 0) {
+            log.warn("Deletion failed - ticket {} not found", safeId);
             throw new TicketNotFoundException(id);
         }
-        log.info("Deleting ticket {}", id);
-        ticketRepository.deleteById(id);
+        log.info("Deleted ticket {}", safeId);
+    }
+
+    /**
+     * Strips control characters from a user-supplied id before it is logged,
+     * so a crafted value cannot forge new log entries (CWE-117).
+     */
+    private String sanitizeForLog(String string) {
+        return string.replaceAll("\\p{Cntrl}", "_");
     }
 }
