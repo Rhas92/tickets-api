@@ -59,9 +59,16 @@ public class TicketService {
         return ticketRepository.findByPriority(priority);
     }
 
-    /** Persists a new ticket; MongoDB assigns its id on save. */
+    /**
+     * Persists a new ticket; MongoDB assigns its id on save.
+     *
+     * The title is sanitized before being logged, but stored verbatim.
+     * @param ticket the ticket to create
+     * @return the created ticket
+     * */
     public Ticket createTicket(Ticket ticket) {
-        log.info("Creating ticket with title '{}'", ticket.getTitle());
+        String safeTitle = sanitizeForLog(ticket.getTitle());
+        log.info("Creating ticket with title '{}'", safeTitle);
         return ticketRepository.save(ticket);
     }
 
@@ -70,7 +77,8 @@ public class TicketService {
      * atomic operation. If no ticket with the given id exists, nothing is created.
      * <p>
      * The id is only used to locate the document, never to write it, so the client
-     * cannot move the record by changing the body.
+     * cannot move the record by changing the body. It is sanitized before being
+     * logged.
      *
      * @param ticket the ticket to update
      * @param id the ticket's id
@@ -78,6 +86,7 @@ public class TicketService {
      * @throws TicketNotFoundException if the ticket does not exist
      */
     public Ticket updateTicket(Ticket ticket, String id) {
+        String safeId = sanitizeForLog(id);
         Query query = new Query(Criteria.where("_id").is(id));
         Update update = new Update()
                 .set("title", ticket.getTitle())
@@ -87,7 +96,7 @@ public class TicketService {
         FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
         Ticket updated = mongoTemplate.findAndModify(query, update, options, Ticket.class);
         if (updated == null) {
-            log.warn("Update failed - ticket {} not found", id);
+            log.warn("Update failed - ticket {} not found", safeId);
             throw new TicketNotFoundException(id);
         }
         return updated;
@@ -96,17 +105,26 @@ public class TicketService {
     /**
      * Deletes the ticket with the given id in a single atomic operation: the
      * document is removed and the number of deleted documents tells us whether
-     * it existed at all.
+     * it existed at all. The id is sanitized before being logged.
      *
      * @param id the ticket's id.
      * @throws TicketNotFoundException if the ticket does not exist
      */
     public void deleteTicket(String id) {
+        String safeId = sanitizeForLog(id);
         int deletedCount = ticketRepository.deleteTicketById(id);
         if (deletedCount == 0) {
-            log.warn("Deletion failed - ticket {} not found", id);
+            log.warn("Deletion failed - ticket {} not found", safeId);
             throw new TicketNotFoundException(id);
         }
-        log.info("Deleted ticket {}", id);
+        log.info("Deleted ticket {}", safeId);
+    }
+
+    /**
+     * Strips control characters from a user-supplied id before it is logged,
+     * so a crafted value cannot forge new log entries (CWE-117).
+     */
+    private String sanitizeForLog(String string) {
+        return string.replaceAll("\\p{Cntrl}", "_");
     }
 }
