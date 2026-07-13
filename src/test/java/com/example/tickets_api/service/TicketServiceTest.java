@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
  * Spring context and no database.
  */
 @ExtendWith(MockitoExtension.class)
-public class TicketServiceTest {
+class TicketServiceTest {
     @Mock
     private TicketRepository ticketRepository;
 

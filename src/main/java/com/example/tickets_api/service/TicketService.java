@@ -1,5 +1,6 @@
 package com.example.tickets_api.service;
 
+import com.example.tickets_api.exceptions.InvalidStatusTransitionException;
 import com.example.tickets_api.exceptions.TicketNotFoundException;
 import com.example.tickets_api.model.Priority;
 import com.example.tickets_api.model.Status;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -76,6 +78,11 @@ public class TicketService {
      * Updates an existing ticket, locating and modifying the document in a single
      * atomic operation. If no ticket with the given id exists, nothing is created.
      * <p>
+     * The status transition is enforced inside the query itself: the update only
+     * matches a document whose current status allows moving to the requested one
+     * (see {@link Status#canTransitionTo}). A ticket's lifecycle only moves forward
+     * or stays put, and {@code CLOSED} is terminal.
+     * <p>
      * The id is only used to locate the document, never to write it, so the client
      * cannot move the record by changing the body. It is sanitized before being
      * logged.
@@ -84,10 +91,17 @@ public class TicketService {
      * @param id the ticket's id
      * @return the updated ticket
      * @throws TicketNotFoundException if the ticket does not exist
+     * @throws InvalidStatusTransitionException if the ticket exists but the
+     *                                          transition is invalid.
      */
     public Ticket updateTicket(Ticket ticket, String id) {
+        Status target = ticket.getStatus();
+        List<Status> allowedSources = Arrays.stream(Status.values())
+                .filter(s -> s.canTransitionTo(target))
+                .toList();
+
         String safeId = sanitizeForLog(id);
-        Query query = new Query(Criteria.where("_id").is(id));
+        Query query = new Query(Criteria.where("_id").is(id).and("status").in(allowedSources));
         Update update = new Update()
                 .set("title", ticket.getTitle())
                 .set("description", ticket.getDescription())
@@ -96,6 +110,11 @@ public class TicketService {
         FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
         Ticket updated = mongoTemplate.findAndModify(query, update, options, Ticket.class);
         if (updated == null) {
+            Ticket exists = ticketRepository.findById(id).orElse(null);
+            if (exists != null) {
+                log.warn("Update failed - status {} update to {} is invalid", exists.getStatus(), target);
+                throw new InvalidStatusTransitionException(exists.getStatus(), target);
+            }
             log.warn("Update failed - ticket {} not found", safeId);
             throw new TicketNotFoundException(id);
         }
