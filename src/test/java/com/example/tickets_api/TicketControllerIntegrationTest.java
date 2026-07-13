@@ -121,6 +121,12 @@ class TicketControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("NOT_A_STATUS")));
     }
 
+    /**
+     * A ticket whose status is CLOSED cannot be reopened: CLOSED is terminal, so
+     * the update is rejected with 409 Conflict rather than a misleading 404.
+     * The ticket is seeded directly through the repository so the test fails only
+     * for the behaviour under test, not for an unrelated POST failure.
+     */
     @Test
     void shouldReturn409WhenTransitionIsInvalid() throws Exception {
         Ticket saved = ticketRepository.save(new Ticket("Status transition", "...", Status.CLOSED, Priority.HIGH));
@@ -142,6 +148,11 @@ class TicketControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Cannot transition ticket from CLOSED to OPEN"));
     }
 
+    /**
+     * A ticket in OPEN can move forward to IN_PROGRESS. Guards the happy path: a
+     * bug that rejected every transition would still satisfy the 409 test above,
+     * so a valid transition must be asserted explicitly.
+     */
     @Test
     void shouldUpdateTicketWhenTransitionIsValid() throws Exception {
         Ticket saved = ticketRepository.save(new Ticket("Status transition", "...", Status.OPEN, Priority.HIGH));
