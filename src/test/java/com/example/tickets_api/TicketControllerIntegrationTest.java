@@ -1,5 +1,8 @@
 package com.example.tickets_api;
 
+import com.example.tickets_api.model.Priority;
+import com.example.tickets_api.model.Status;
+import com.example.tickets_api.model.Ticket;
 import com.example.tickets_api.repository.TicketRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,8 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.example.tickets_api.service.JwtService;
@@ -63,12 +66,12 @@ class TicketControllerIntegrationTest {
     @Test
     void shouldCreateTicketViaHttp() throws Exception {
         String json = """
-                {
+                  {
                   "title": "Login broken",
                   "description": "Cannot log in",
                   "status": "OPEN",
                   "priority": "HIGH"
-                }
+                  }
                 """;
 
         mockMvc.perform(post("/tickets")
@@ -87,13 +90,13 @@ class TicketControllerIntegrationTest {
     @Test
     void shouldReturn400WhenTitleIsBlank() throws Exception {
         String json = """
-                {
+                  {
                   "title": "",
                   "description": "Cannot log in",
                   "status": "OPEN",
                   "priority": "HIGH"
-                }
-                """;
+                  }
+                  """;
 
         mockMvc.perform(post("/tickets")
                         .header("Authorization", "Bearer " + token)
@@ -116,5 +119,57 @@ class TicketControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("NOT_A_STATUS")));
+    }
+
+    /**
+     * A ticket whose status is CLOSED cannot be reopened: CLOSED is terminal, so
+     * the update is rejected with 409 Conflict rather than a misleading 404.
+     * The ticket is seeded directly through the repository so the test fails only
+     * for the behaviour under test, not for an unrelated POST failure.
+     */
+    @Test
+    void shouldReturn409WhenTransitionIsInvalid() throws Exception {
+        Ticket saved = ticketRepository.save(new Ticket("Status transition", "...", Status.CLOSED, Priority.HIGH));
+        String id = saved.getId();
+        String jsonTarget = """
+                  {
+                  "title": "Status transition",
+                  "description": "...",
+                  "status": "OPEN",
+                  "priority": "HIGH"
+                  }
+                  """;
+
+        mockMvc.perform(put("/tickets/{id}", id)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonTarget))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Cannot transition ticket from CLOSED to OPEN"));
+    }
+
+    /**
+     * A ticket in OPEN can move forward to IN_PROGRESS. Guards the happy path: a
+     * bug that rejected every transition would still satisfy the 409 test above,
+     * so a valid transition must be asserted explicitly.
+     */
+    @Test
+    void shouldUpdateTicketWhenTransitionIsValid() throws Exception {
+        Ticket saved = ticketRepository.save(new Ticket("Status transition", "...", Status.OPEN, Priority.HIGH));
+        String id = saved.getId();
+        String jsonTarget = """
+                {
+                "title": "Status transition",
+                "description": "...",
+                "status": "IN_PROGRESS",
+                "priority": "HIGH"
+                }
+                """;
+        mockMvc.perform(put("/tickets/{id}", id)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonTarget))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
     }
 }
