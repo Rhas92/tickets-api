@@ -1,9 +1,11 @@
 package com.example.tickets_api;
 
+import com.example.tickets_api.model.AppUser;
 import com.example.tickets_api.model.Priority;
 import com.example.tickets_api.model.Status;
 import com.example.tickets_api.model.Ticket;
 import com.example.tickets_api.repository.TicketRepository;
+import com.example.tickets_api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mongodb.MongoDBContainer;
@@ -45,9 +48,17 @@ class TicketControllerIntegrationTest {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private JwtService jwtService;
 
-    private String token;
+    private String adminToken;
+
+    private String userToken;
 
     /**
      * Resets the collection and mints a fresh admin token before each test, so
@@ -56,7 +67,16 @@ class TicketControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         ticketRepository.deleteAll();
-        token = jwtService.generateToken("admin"); // "admin" is seeded by DataSeeder
+        if (userRepository.findByUsername("user").isEmpty()) {
+            AppUser user = new AppUser(
+                    "user",
+                    passwordEncoder.encode("user123"),
+                    "USER"
+            );
+            userRepository.save(user);
+        }
+        adminToken = jwtService.generateToken("admin"); // "admin" is seeded by DataSeeder
+        userToken = jwtService.generateToken("user");
     }
 
     /**
@@ -75,7 +95,7 @@ class TicketControllerIntegrationTest {
                 """;
 
         mockMvc.perform(post("/tickets")
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
@@ -99,7 +119,7 @@ class TicketControllerIntegrationTest {
                   """;
 
         mockMvc.perform(post("/tickets")
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest());
@@ -115,7 +135,7 @@ class TicketControllerIntegrationTest {
     @Test
     void shouldReturn400WhenStatusEnumIsInvalid() throws Exception {
         mockMvc.perform(get("/tickets/status/NOT_A_STATUS")
-                        .header("Authorization", "Bearer " + token))
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("NOT_A_STATUS")));
@@ -141,7 +161,7 @@ class TicketControllerIntegrationTest {
                   """;
 
         mockMvc.perform(put("/tickets/{id}", id)
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonTarget))
                 .andExpect(status().isConflict())
@@ -166,10 +186,16 @@ class TicketControllerIntegrationTest {
                 }
                 """;
         mockMvc.perform(put("/tickets/{id}", id)
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonTarget))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+    }
+
+    @Test
+    void shouldReturn401WhenNoTokenIsProvided() throws Exception {
+        mockMvc.perform(get("/tickets"))
+                .andExpect(status().isUnauthorized());
     }
 }
