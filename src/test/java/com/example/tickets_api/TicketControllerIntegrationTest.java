@@ -193,9 +193,45 @@ class TicketControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
     }
 
+    /**
+     * A request to a protected endpoint with no Authorization header is anonymous,
+     * so it is rejected with 401 Unauthorized before reaching the controller. The
+     * body is the standard ErrorResponse, confirming security errors share the same
+     * shape as the rest of the API.
+     */
     @Test
     void shouldReturn401WhenNoTokenIsProvided() throws Exception {
         mockMvc.perform(get("/tickets"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Authentication required"));
+    }
+
+    /**
+     * A DELETE is restricted to ADMINs. An authenticated non-admin user is
+     * recognized (so this is not a 401) but not permitted, so the request is
+     * rejected with 403 Forbidden.
+     */
+    @Test
+    void shouldReturn403WhenUserIsUnauthorized() throws Exception {
+        Ticket saved = ticketRepository.save(new Ticket("Ticket to delete", "...", Status.OPEN, Priority.HIGH));
+        String id = saved.getId();
+        mockMvc.perform(delete("/tickets/{id}", id)
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * The happy path for the ADMIN-only rule: an authenticated admin can delete a
+     * ticket and gets 204 No Content. Pairs with the 403 test to prove the rule
+     * both blocks non-admins and lets admins through, not just one or the other.
+     */
+    @Test
+    void shouldDeleteTicketWhenAuthorizationIsValid() throws Exception {
+        Ticket saved = ticketRepository.save(new Ticket("Ticket to delete", "...", Status.OPEN, Priority.HIGH));
+        String id = saved.getId();
+
+        mockMvc.perform(delete("/tickets/{id}", id)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
     }
 }
