@@ -3,6 +3,8 @@ package com.example.tickets_api.repository;
 import com.example.tickets_api.model.Priority;
 import com.example.tickets_api.model.Status;
 import com.example.tickets_api.model.Ticket;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
@@ -18,20 +20,22 @@ import java.util.List;
 public interface TicketRepository extends MongoRepository<Ticket, String> {
 
     /**
-     * Finds all tickets that are in the given status.
+     * Finds a page of tickets that are in the given status.
      *
-     * @param status the lifecycle state to filter by
-     * @return the matching tickets (empty list if none)
+     * @param status   the lifecycle state to filter by
+     * @param pageable the page number, size and sort to apply
+     * @return a page of matching tickets (empty page if none)
      */
-    List<Ticket> findByStatus(Status status);
+    Page<Ticket> findByStatus(Status status, Pageable pageable);
 
     /**
-     * Finds all tickets that have the given priority.
+     * Finds a page of tickets that are in the given priority.
      *
-     * @param priority the urgency level to filter by
-     * @return the matching tickets (empty list if none)
+     * @param priority   the lifecycle state to filter by
+     * @param pageable the page number, size and sort to apply
+     * @return a page of matching tickets (empty page if none)
      */
-    List<Ticket> findByPriority(Priority priority);
+    Page<Ticket> findByPriority(Priority priority, Pageable pageable);
 
     /**
      * Deletes the ticket with the given id in a single atomic operation.

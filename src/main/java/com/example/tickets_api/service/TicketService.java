@@ -51,14 +51,14 @@ public class TicketService {
                 .orElseThrow(() -> new TicketNotFoundException(id));
     }
 
-    /** Returns all tickets in the given status. */
-    public List<Ticket> getTicketsByStatus(Status status) {
-        return ticketRepository.findByStatus(status);
+    /** Returns one page of tickets in the given status. */
+    public Page<Ticket> getTicketsByStatus(Status status, Pageable pageable) {
+        return ticketRepository.findByStatus(status, pageable);
     }
 
-    /** Returns all tickets with the given priority. */
-    public List<Ticket> getTicketsByPriority(Priority priority) {
-        return ticketRepository.findByPriority(priority);
+    /** Returns one page of tickets with the given priority. */
+    public Page<Ticket> getTicketsByPriority(Priority priority, Pageable pageable) {
+        return ticketRepository.findByPriority(priority, pageable);
     }
 
     /**
