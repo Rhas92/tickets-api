@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.testcontainers.mongodb.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -71,10 +73,10 @@ class TicketIntegrationTest {
         ticketRepository.save(new Ticket("A", "desc", Status.OPEN, Priority.HIGH));
         ticketRepository.save(new Ticket("B", "desc", Status.CLOSED, Priority.LOW));
 
-        List<Ticket> openTickets = ticketRepository.findByStatus(Status.OPEN);
+        Page<Ticket> openTickets = ticketRepository.findByStatus(Status.OPEN, PageRequest.of(0, 20));
 
-        assertEquals(1, openTickets.size());
-        assertEquals("A", openTickets.getFirst().getTitle());
+        assertEquals(1L, openTickets.getTotalElements());
+        assertEquals("A", openTickets.getContent().getFirst().getTitle());
     }
 
     /** The derived {@code findByPriority} returns only matching tickets. */
@@ -83,9 +85,9 @@ class TicketIntegrationTest {
         ticketRepository.save(new Ticket("A", "desc", Status.OPEN, Priority.HIGH));
         ticketRepository.save(new Ticket("B", "desc", Status.CLOSED, Priority.LOW));
 
-        List<Ticket> openTickets = ticketRepository.findByPriority(Priority.HIGH);
+        Page<Ticket> openTickets = ticketRepository.findByPriority(Priority.HIGH, PageRequest.of(0, 20));
 
-        assertEquals(1, openTickets.size());
-        assertEquals("A", openTickets.getFirst().getTitle());
+        assertEquals(1L , openTickets.getTotalElements());
+        assertEquals("A", openTickets.getContent().getFirst().getTitle());
     }
 }

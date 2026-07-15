@@ -39,17 +39,6 @@ public class TicketController {
         return ticketService.getTickets(pageable).map(this::toResponse);
     }
 
-    /**
-     * Returns all tickets in the given status. An unknown status value is
-     * rejected as 400 by the global handler (type-mismatch on the enum).
-     */
-    @GetMapping("/tickets/status/{status}")
-    public List<TicketResponse> getTicketsByStatus(@PathVariable Status status) {
-        return ticketService.getTicketsByStatus(status).stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
     /** Returns a single ticket, or 404 if no ticket has that id. */
     @GetMapping("/tickets/{id}")
     public TicketResponse getTicketById(@PathVariable String id) {
@@ -57,14 +46,21 @@ public class TicketController {
     }
 
     /**
-     * Returns all tickets with the given priority. An unknown priority value is
+     * Returns a page of tickets in the given status. An unknown status value is
+     * rejected as 400 by the global handler (type-mismatch on the enum).
+     */
+    @GetMapping("/tickets/status/{status}")
+    public Page<TicketResponse> getTicketsByStatus(@PathVariable Status status, Pageable pageable) {
+        return ticketService.getTicketsByStatus(status, pageable).map(this::toResponse);
+    }
+
+    /**
+     * Returns a page of tickets with the given priority. An unknown priority value is
      * rejected as 400 by the global handler.
      */
     @GetMapping("/tickets/priority/{priority}")
-    public List<TicketResponse> getTicketsByPriority(@PathVariable Priority priority) {
-        return ticketService.getTicketsByPriority(priority).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<TicketResponse> getTicketsByPriority(@PathVariable Priority priority, Pageable pageable) {
+        return ticketService.getTicketsByPriority(priority, pageable).map(this::toResponse);
     }
 
     /**

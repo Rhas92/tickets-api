@@ -234,4 +234,40 @@ class TicketControllerIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
     }
+
+    /**
+     * Filtering by status is paged: with three OPEN tickets and a page size of two,
+     * the response returns two in {@code content} while {@code totalElements} still
+     * reports three. This proves the endpoint slices results rather than returning
+     * the whole set.
+     */
+    @Test
+    void shouldReturnPagedResultsWhenFilteringByStatus () throws Exception {
+        ticketRepository.save(new Ticket("Ticket  1", "...", Status.OPEN, Priority.HIGH));
+        ticketRepository.save(new Ticket("Ticket 2", "...", Status.CLOSED, Priority.HIGH));
+        ticketRepository.save(new Ticket("Ticket 3", "...", Status.OPEN, Priority.HIGH));
+
+        mockMvc.perform(get("/tickets/status/OPEN?page=0&size=1")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    /**
+     * Filtering by priority is paged, mirroring the status test. Also serves as
+     * HTTP-level coverage of the priority endpoint, which otherwise has none.
+     */
+    @Test
+    void shouldReturnPagedResultsWhenFilteringByPriority () throws Exception {
+        ticketRepository.save(new Ticket("Ticket  1", "...", Status.CLOSED, Priority.HIGH));
+        ticketRepository.save(new Ticket("Ticket 2", "...", Status.OPEN, Priority.MEDIUM));
+        ticketRepository.save(new Ticket("Ticket 3", "...", Status.OPEN, Priority.HIGH));
+
+        mockMvc.perform(get("/tickets/priority/HIGH?page=0&size=1")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
 }
