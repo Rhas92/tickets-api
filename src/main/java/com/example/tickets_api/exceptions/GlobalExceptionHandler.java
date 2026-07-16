@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles bean-validation failures on a request body (e.g. a blank title).
+     * Handles bean-validation failures on a request body (e.g. a blank title, or a title too long).
      * Aggregates every field error into a single, comma-separated message.
      *
      * @param ex the validation exception holding the per-field errors

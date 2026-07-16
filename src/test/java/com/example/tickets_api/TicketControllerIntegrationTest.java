@@ -142,6 +142,30 @@ class TicketControllerIntegrationTest {
     }
 
     /**
+     * A title over the 100-character limit violates {@code @Size} and is rejected
+     * with 400, before any ticket is persisted. Guards against oversized payloads,
+     * the complement to the blank-title check.
+     */
+    @Test
+    void shouldReturn400WhenTitleTooLong () throws Exception {
+        String longTitle= "a".repeat(101);
+        String json = """
+                  {
+                  "title": "%s",
+                  "description": "Cannot log in",
+                  "status": "OPEN",
+                  "priority": "HIGH"
+                  }
+                  """.formatted(longTitle);
+        mockMvc.perform(post("/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("title")));
+    }
+
+    /**
      * A ticket whose status is CLOSED cannot be reopened: CLOSED is terminal, so
      * the update is rejected with 409 Conflict rather than a misleading 404.
      * The ticket is seeded directly through the repository so the test fails only
@@ -270,4 +294,6 @@ class TicketControllerIntegrationTest {
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.totalElements").value(2));
     }
+
+
 }
