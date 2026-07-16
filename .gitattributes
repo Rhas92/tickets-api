@@ -1,2 +1,8 @@
+# Normalize all text files to LF in the repository
+* text=auto eol=lf
+
+# Shell script must stay LF (already enforced)
 /mvnw text eol=lf
+
+# Windows scripts must stay CRLF or they can break
 *.cmd text eol=crlf
